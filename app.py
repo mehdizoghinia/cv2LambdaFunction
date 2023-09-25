@@ -2,6 +2,8 @@ import json
 import boto3
 from PIL import Image
 from io import BytesIO
+import tensorflow as tf
+import numpy as np
 import cv2
 s3_client = boto3.client('s3')
 
