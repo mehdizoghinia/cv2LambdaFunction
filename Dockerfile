@@ -1,6 +1,6 @@
 # Define custom function directory
 ARG FUNCTION_DIR="/function"
-FROM python:3.11 as build-image
+FROM python:3.9 as build-image
 
 # Include global arg in this stage of the build
 ARG FUNCTION_DIR
@@ -50,7 +50,7 @@ RUN pip install -r requirements.txt --target ${FUNCTION_DIR}
 RUN pip install \
     --target ${FUNCTION_DIR} \
         awslambdaric
-FROM python:3.11
+FROM python:3.9
 
 # Include global arg in this stage of the build
 ARG FUNCTION_DIR
