@@ -1,11 +1,13 @@
-import json
 import boto3
-from PIL import Image
-from io import BytesIO
-import tensorflow as tf
-import numpy as np
 import cv2
+import numpy as np
+import tensorflow as tf
+from io import BytesIO
+from PIL import Image
+import json
+
 s3_client = boto3.client('s3')
+sagemaker_runtime_client = boto3.client('sagemaker-runtime')
 
 def lambda_handler(event, context):
     # Retrieve bucket name and file key from the S3 event
@@ -22,14 +24,48 @@ def lambda_handler(event, context):
     width, height = image.size
     print(f"Image dimensions: Width={width} x Height={height}")
 
-    # Process the image (your custom code can go here)
-    # ...
+    # Convert PIL image to numpy array
+    image_np = np.array(image)
 
-    # Copy the image to another folder (e.g., 'output-images/') within the same bucket
+    # Preprocess the image
+    rgb = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+    resized = tf.image.resize(rgb, (120, 120))
+
+    # Invoke the SageMaker endpoint
+    response = sagemaker_runtime_client.invoke_endpoint(
+        EndpointName='facedetection',
+        ContentType='application/x-image',
+        Body=tf.io.encode_jpeg(resized).numpy()
+    )
+
+    yhat = np.frombuffer(response['Body'].read(), np.float32).reshape(1, -1)  # Adjust as necessary
+
+    # Get bounding box coordinates
+    sample_coords = yhat[1][0]
+
+    if yhat[0] > 0.5:
+        # Controls the main rectangle
+        cv2.rectangle(image_np, 
+                      tuple(np.multiply(sample_coords[:2], [width, height]).astype(int)),
+                      tuple(np.multiply(sample_coords[2:], [width, height]).astype(int)), 
+                            (255,0,0), 2)
+        # Controls the label rectangle
+        cv2.rectangle(image_np, 
+                      tuple(np.add(np.multiply(sample_coords[:2], [width, height]).astype(int), 
+                                    [0,-30])),
+                      tuple(np.add(np.multiply(sample_coords[:2], [width, height]).astype(int),
+                                    [80,0])), 
+                            (255,0,0), -1)
+        
+        # Controls the text rendered
+        cv2.putText(image_np, 'face', tuple(np.add(np.multiply(sample_coords[:2], [width, height]).astype(int),
+                                               [0,-5])),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2, cv2.LINE_AA)
+    
+    # Save image with bounding box back to S3
+    _, buffer = cv2.imencode('.jpg', image_np)
     file_name = file_key.replace("raw-images/", "")
-    print('file_name  ', file_name)
-    copy_source = {'Bucket': bucket_name, 'Key': file_key}
-    s3_client.copy_object(Bucket=bucket_name, CopySource=copy_source, Key=f'output-images/{file_name}')
+    s3_client.put_object(Bucket=bucket_name, Key=f'output-images/{file_name}', Body=buffer.tobytes())
 
     # Delete the image from the original folder
     s3_client.delete_object(Bucket=bucket_name, Key=file_key)
