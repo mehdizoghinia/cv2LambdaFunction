@@ -39,7 +39,7 @@ def lambda_handler(event, context):
     # Invoke the SageMaker endpoint
     response = sagemaker_runtime_client.invoke_endpoint(
         EndpointName='facedetection',
-        ContentType='application/x-image',
+        ContentType='image/jpeg',
         Body=image_bytes_io.getvalue()
     )
 
