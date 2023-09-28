@@ -24,23 +24,24 @@ def lambda_handler(event, context):
     width, height = image.size
     print(f"Image dimensions: Width={width} x Height={height}")
 
-     # Convert the image to a numpy array and resize it
-    numpy_image = np.array(image)
-    resized = cv2.resize(numpy_image, (120, 120))
-
-    # Convert the numpy array to uint8 type
-    resized_uint8 = resized.astype(np.uint8)
-
-    # Convert the resized image to a byte array
-    image_bytes_io = io.BytesIO()
-    resized_image_pil = Image.fromarray(resized_uint8)
-    resized_image_pil.save(image_bytes_io, format='JPEG')
+    # Load image with OpenCV
+    numpy_image = cv2.imdecode(np.frombuffer(image_object, np.uint8), cv2.IMREAD_COLOR)
+    
+    # Perform the same preprocessing steps
+    cropped = numpy_image[50:500, 50:500, :]
+    rgb = cv2.cvtColor(cropped, cv2.COLOR_BGR2RGB)
+    resized = tf.image.resize(rgb, (120,120))
+    normalized = np.expand_dims(resized/255, 0)
+    
+    # Convert the numpy array to a list and then to JSON
+    normalized_list = normalized.tolist()
+    serialized_image = json.dumps({'instances': normalized_list})
 
     # Invoke the SageMaker endpoint
     response = sagemaker_runtime_client.invoke_endpoint(
         EndpointName='facedetection',
-        ContentType='image/jpeg',
-        Body=image_bytes_io.getvalue()
+        ContentType='application/json',
+        Body=serialized_image
     )
 
     yhat = np.frombuffer(response['Body'].read(), np.float32).reshape(1, -1)  # Adjust as necessary
