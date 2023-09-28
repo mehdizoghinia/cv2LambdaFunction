@@ -30,12 +30,13 @@ def lambda_handler(event, context):
     # Preprocess the image
     rgb = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
     resized = tf.image.resize(rgb, (120, 120))
-
+    # Convert the float tensor to uint8
+    resized_uint8 = tf.cast(resized, tf.uint8)
     # Invoke the SageMaker endpoint
     response = sagemaker_runtime_client.invoke_endpoint(
         EndpointName='facedetection',
         ContentType='application/x-image',
-        Body=tf.io.encode_jpeg(resized).numpy()
+        Body=resized_uint8.numpy()
     )
 
     yhat = np.frombuffer(response['Body'].read(), np.float32).reshape(1, -1)  # Adjust as necessary
