@@ -5,7 +5,7 @@ import tensorflow as tf
 from io import BytesIO
 from PIL import Image
 import json
-
+import io
 s3_client = boto3.client('s3')
 sagemaker_runtime_client = boto3.client('sagemaker-runtime')
 
@@ -24,19 +24,23 @@ def lambda_handler(event, context):
     width, height = image.size
     print(f"Image dimensions: Width={width} x Height={height}")
 
-    # Convert PIL image to numpy array
-    image_np = np.array(image)
+     # Convert the image to a numpy array and resize it
+    numpy_image = np.array(image)
+    resized = cv2.resize(numpy_image, (120, 120))
 
-    # Preprocess the image
-    rgb = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
-    resized = tf.image.resize(rgb, (120, 120))
-    # Convert the float tensor to uint8
-    resized_uint8 = tf.cast(resized, tf.uint8)
+    # Convert the numpy array to uint8 type
+    resized_uint8 = resized.astype(np.uint8)
+
+    # Convert the resized image to a byte array
+    image_bytes_io = io.BytesIO()
+    resized_image_pil = Image.fromarray(resized_uint8)
+    resized_image_pil.save(image_bytes_io, format='JPEG')
+
     # Invoke the SageMaker endpoint
     response = sagemaker_runtime_client.invoke_endpoint(
         EndpointName='facedetection',
         ContentType='application/x-image',
-        Body=resized_uint8.numpy()
+        Body=image_bytes_io.getvalue()
     )
 
     yhat = np.frombuffer(response['Body'].read(), np.float32).reshape(1, -1)  # Adjust as necessary
