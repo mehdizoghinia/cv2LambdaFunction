@@ -46,17 +46,18 @@ def lambda_handler(event, context):
 
     yhat = np.frombuffer(response['Body'].read(), np.float32).reshape(1, -1)  # Adjust as necessary
 
+    print('yhat',yhat)
     # Get bounding box coordinates
     sample_coords = yhat[1][0]
 
     if yhat[0] > 0.5:
         # Controls the main rectangle
-        cv2.rectangle(image_np, 
+        cv2.rectangle(cropped, 
                       tuple(np.multiply(sample_coords[:2], [width, height]).astype(int)),
                       tuple(np.multiply(sample_coords[2:], [width, height]).astype(int)), 
                             (255,0,0), 2)
         # Controls the label rectangle
-        cv2.rectangle(image_np, 
+        cv2.rectangle(cropped, 
                       tuple(np.add(np.multiply(sample_coords[:2], [width, height]).astype(int), 
                                     [0,-30])),
                       tuple(np.add(np.multiply(sample_coords[:2], [width, height]).astype(int),
@@ -64,12 +65,12 @@ def lambda_handler(event, context):
                             (255,0,0), -1)
         
         # Controls the text rendered
-        cv2.putText(image_np, 'face', tuple(np.add(np.multiply(sample_coords[:2], [width, height]).astype(int),
+        cv2.putText(cropped, 'face', tuple(np.add(np.multiply(sample_coords[:2], [width, height]).astype(int),
                                                [0,-5])),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2, cv2.LINE_AA)
     
     # Save image with bounding box back to S3
-    _, buffer = cv2.imencode('.jpg', image_np)
+    _, buffer = cv2.imencode('.jpg', cropped)
     file_name = file_key.replace("raw-images/", "")
     s3_client.put_object(Bucket=bucket_name, Key=f'output-images/{file_name}', Body=buffer.tobytes())
 
