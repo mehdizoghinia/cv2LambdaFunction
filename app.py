@@ -56,12 +56,12 @@ def lambda_handler(event, context):
 
     if p > 0.5: 
         # Controls the main rectangle
-        cv2.rectangle(image, 
+        cv2.rectangle(numpy_image, 
                     tuple(np.multiply(sample_coords[:2], [450,450]).astype(int)),
                     tuple(np.multiply(sample_coords[2:], [450,450]).astype(int)), 
                             (255,0,0), 2)
         # Controls the label rectangle
-        cv2.rectangle(image, 
+        cv2.rectangle(numpy_image, 
                     tuple(np.add(np.multiply(sample_coords[:2], [450,450]).astype(int), 
                                     [0,-30])),
                     tuple(np.add(np.multiply(sample_coords[:2], [450,450]).astype(int),
@@ -69,7 +69,7 @@ def lambda_handler(event, context):
                             (255,0,0), -1)
 
         # Controls the text rendered
-        cv2.putText(image, 'face', tuple(np.add(np.multiply(sample_coords[:2], [450,450]).astype(int),
+        cv2.putText(numpy_image, 'face', tuple(np.add(np.multiply(sample_coords[:2], [450,450]).astype(int),
                                             [0,-5])),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2, cv2.LINE_AA)
         
