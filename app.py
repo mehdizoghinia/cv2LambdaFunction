@@ -51,7 +51,7 @@ def lambda_handler(event, context):
     print(result)
 
     sample_coords = result['predictions'][0]['dense_3']
-    p = result['predictions'][0]['dense_1']
+    p = result['predictions'][0]['dense_1'][0]
 
 
     if p > 0.5: 
